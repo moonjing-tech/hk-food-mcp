@@ -3,3 +3,4 @@ supabase
 uvicorn
 httpx
 fastapi
+opencc-python-reimplemented
