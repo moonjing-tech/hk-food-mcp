@@ -1,0 +1,4 @@
+mcp
+supabase
+python-dotenv
+uvicorn
