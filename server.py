@@ -4,6 +4,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from supabase import create_client, Client
+from fastapi import Query
 
 load_dotenv()
 
@@ -21,6 +22,24 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+# ==========================================
+# 📍 新增：供本地无 Python 环境客户端直接使用的 HTTP GET 接口
+# ==========================================
+@mcp.app.get("/api/search_food")
+async def api_search_food(keyword: str = Query(..., description="要查询的食物名称")):
+    """支持外部客户端通过标准 HTTP GET 请求直接检索香港外食数据"""
+    try:
+        res = supabase.table("foods").select("*").ilike("name", f"%{keyword}%").limit(10).execute()
+        if not res.data:
+            return {"status": "empty", "message": f"未找到与 '{keyword}' 相关的食物。", "data": []}
+        return {"status": "success", "count": len(res.data), "data": res.data}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+# ==========================================
+# MCP Tools 逻辑 (保留不变)
+# ==========================================
 @mcp.tool()
 def search_foods(query: str, category: Optional[str] = None, limit: int = 10) -> str:
     """根据食物名称模糊搜索香港外食数据库中的食物营养及热量信息。"""
