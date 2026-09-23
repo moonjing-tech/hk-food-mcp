@@ -25,7 +25,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ==========================================
 # 📍 新增：供本地无 Python 环境客户端直接使用的 HTTP GET 接口
 # ==========================================
-@mcp.app.get("/api/search_food")
+@mcp._mcp_server.app.get("/api/search_food")
 async def api_search_food(keyword: str = Query(..., description="要查询的食物名称")):
     """支持外部客户端通过标准 HTTP GET 请求直接检索香港外食数据"""
     try:
