@@ -4,15 +4,18 @@ from typing import Optional
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from supabase import create_client, Client
-from fastapi import Query
+from fastapi import FastAPI, Query
 
 load_dotenv()
 
-# 1. 初始化 FastMCP，支持云端部署的 host 和 port 配置
+# 1. 初始化独立的 FastAPI 应用
+app = FastAPI(title="HongKong Food MCP & REST API")
+
+# 2. 初始化 FastMCP
 PORT = int(os.getenv("PORT", 8000))
 mcp = FastMCP("HongKong Food Database MCP Server", host="0.0.0.0", port=PORT)
 
-# 2. 初始化 Supabase 客户端
+# 3. 初始化 Supabase 客户端
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -23,9 +26,9 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # ==========================================
-# 📍 新增：供本地无 Python 环境客户端直接使用的 HTTP GET 接口
+# 📍 1. 标准 HTTP GET 接口（供无 Python 环境的客户端使用）
 # ==========================================
-@mcp._mcp_server.app.get("/api/search_food")
+@app.get("/api/search_food")
 async def api_search_food(keyword: str = Query(..., description="要查询的食物名称")):
     """支持外部客户端通过标准 HTTP GET 请求直接检索香港外食数据"""
     try:
@@ -38,7 +41,7 @@ async def api_search_food(keyword: str = Query(..., description="要查询的食
 
 
 # ==========================================
-# MCP Tools 逻辑 (保留不变)
+# 📍 2. MCP Tools 逻辑 (保留不变)
 # ==========================================
 @mcp.tool()
 def search_foods(query: str, category: Optional[str] = None, limit: int = 10) -> str:
@@ -89,6 +92,12 @@ def filter_foods_by_nutrition(
         return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
 
 
+# ==========================================
+# 📍 3. 将 FastMCP 的 SSE 路径挂载到 FastAPI app
+# ==========================================
+app.mount("/", mcp.sse_app())
+
+
 if __name__ == "__main__":
-    # 以 SSE 传输方式启动，对外暴露 HTTP/SSE 接口
-    mcp.run(transport="sse")
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
