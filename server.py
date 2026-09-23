@@ -30,15 +30,38 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ==========================================
 @app.get("/api/search_food")
 async def api_search_food(keyword: str = Query(..., description="要查询的食物名称")):
-    """支持外部客户端通过标准 HTTP GET 请求直接检索香港外食数据"""
+    """支持外部客户端通过标准 HTTP GET 请求直接检索香港外食数据（支持简繁体与拆词匹配）"""
     try:
-        res = supabase.table("foods").select("*").ilike("name", f"%{keyword}%").limit(10).execute()
+        # 1. 常见简繁体自动转换映射
+        char_map = {'冻': '凍', '柠': '檸', '车': '車', '面': '麵', '饭': '飯', '鸡': '雞', '鸭': '鴨', '猪': '豬', '汤': '湯', '奶': '奶'}
+        
+        # 生成简体与繁体两个版本的关键词
+        keyword_cn = keyword
+        keyword_hk = "".join([char_map.get(c, c) for c in keyword])
+        
+        # 2. 构造 Supabase 的模糊查询条件
+        # 如果搜 "冻柠茶" -> 同时模糊匹配 "%冻%柠%茶%" 和 "%凍%檸%茶%"
+        pattern_cn = "%" + "%".join(list(keyword_cn)) + "%"
+        pattern_hk = "%" + "%".join(list(keyword_hk)) + "%"
+        
+        # 使用 or_ 组合查询
+        or_filter = f"name.ilike.{pattern_cn},name.ilike.{pattern_hk}"
+        
+        res = (
+            supabase.schema("public")
+            .table("foods")
+            .select("*")
+            .or_(or_filter)
+            .limit(10)
+            .execute()
+        )
+        
         if not res.data:
             return {"status": "empty", "message": f"未找到与 '{keyword}' 相关的食物。", "data": []}
+            
         return {"status": "success", "count": len(res.data), "data": res.data}
     except Exception as e:
         return {"status": "error", "message": str(e), "data": []}
-
 
 # ==========================================
 # 📍 2. MCP Tools 逻辑 (保留不变)
