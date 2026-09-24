@@ -1,7 +1,7 @@
 import re
 import opencc
 
-converter = opencc.OpenCC("s2hk.json")
+converter = opencc.OpenCC("s2hk")
 
 QUERY_NOISE = [
     "幾多卡路里", "多少卡路里", "幾多熱量", "多少熱量",
