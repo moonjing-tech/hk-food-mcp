@@ -4,3 +4,4 @@ uvicorn
 httpx
 fastapi
 opencc-python-reimplemented
+python-dotenv
